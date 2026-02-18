@@ -1,0 +1,13 @@
+services:
+  client1:
+    image: nginx:alpine
+    container_name: client1
+    restart: unless-stopped
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+    networks:
+      - caddy-net
+
+networks:
+  caddy-net:
+    external: true

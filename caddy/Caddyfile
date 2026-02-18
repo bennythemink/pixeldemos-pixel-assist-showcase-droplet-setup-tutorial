@@ -1,0 +1,23 @@
+{
+    auto_https off
+}
+
+client1.domain.com.au {
+    tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
+    reverse_proxy client1:80
+}
+
+client2.domain.com.au {
+    tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
+    reverse_proxy client2:80
+}
+
+client3.domain.com.au {
+    tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
+    reverse_proxy client3:80
+}
+
+llm1.domain.com.au {
+    tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
+    reverse_proxy anythingllm1:3001
+}
