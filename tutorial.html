@@ -784,10 +784,18 @@ cat ~/.ssh/id_ed25519.pub`, 'bash', `<p><code>ssh-keygen</code> generates SSH ke
       <ol>
         <li>Go to <strong>Route53 &rarr; Registered Domains &rarr; ${esc(getDomain())}</strong></li>
         <li>Click <strong>Add or edit name servers</strong></li>
-        <li>Replace the existing NS records with the two Cloudflare nameservers</li>
+        <li>Replace the existing nameservers with the two Cloudflare nameservers</li>
         <li>Save &mdash; propagation can take up to 24-48 hours but is usually much faster</li>
       </ol>
-      <div class="callout info">After this, Route53 becomes dormant for this domain. All DNS management happens in Cloudflare.</div>
+      <div class="callout warning"><strong>IMPORTANT:</strong> You must update nameservers under <strong>Registered Domains</strong>, NOT in the Hosted Zone. These are two different sections in Route53:
+        <ul>
+          <li><strong>Registered Domains</strong> &mdash; controls which nameservers the domain points to at the registrar level. This is where you make the change.</li>
+          <li><strong>Hosted Zones</strong> &mdash; contains DNS records (A, CNAME, MX, etc.) that Route53 serves when it is the authoritative DNS. Changing the NS record inside a Hosted Zone does <strong>not</strong> change where the domain actually points &mdash; it only affects Route53's internal delegation.</li>
+        </ul>
+      </div>
+      <p>After updating, verify propagation from your local terminal:</p>
+      ${codeBlock(`dig NS ${raw('domain', 'YOUR_DOMAIN')} +short`, 'bash', `<p><code>dig NS</code> queries the nameserver records for the domain.</p><p><code>+short</code> shows just the nameserver values without extra DNS metadata.</p><p>You should see the two Cloudflare nameservers listed. If you still see the old AWS nameservers, propagation hasn't completed yet.</p>`)}
+      <div class="callout info">After propagation completes, Route53 becomes dormant for this domain. All DNS management happens in Cloudflare.</div>
     `
         }),
 

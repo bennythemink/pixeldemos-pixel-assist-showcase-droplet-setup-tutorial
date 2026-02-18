@@ -146,8 +146,21 @@ docker network create caddy-net
 
 1. Go to **Route53 → Registered Domains → your domain**
 2. Click **Add or edit name servers**
-3. Replace the existing NS records with the two Cloudflare nameservers
+3. Replace the existing nameservers with the two Cloudflare nameservers
 4. Save — propagation can take up to 24-48 hours but usually much faster
+
+> **IMPORTANT:** You must update nameservers under **Registered Domains**, NOT in the Hosted Zone. These are two different sections in Route53:
+>
+> - **Registered Domains** — controls which nameservers the domain points to at the registrar level. This is where you make the change.
+> - **Hosted Zones** — contains DNS records (A, CNAME, MX, etc.) that Route53 serves when it is the authoritative DNS. Changing the NS record inside a Hosted Zone does NOT change where the domain actually points — it only affects Route53's internal delegation.
+
+Verify propagation:
+
+```bash
+dig NS yourdomain.com.au +short
+```
+
+You should see the two Cloudflare nameservers. Once Cloudflare shows the zone as "Active", you can proceed.
 
 ### 3c. Configure Cloudflare SSL
 
