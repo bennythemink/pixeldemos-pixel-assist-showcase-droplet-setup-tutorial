@@ -1130,6 +1130,21 @@ git pull`, 'bash', `<p><code>cd /srv/sites/${esc(exampleClient)}</code> navigate
       <h3>Verify</h3>
       ${codeBlock(`docker ps | grep ${esc(exampleClient)}`, 'bash', `<p>Filters <code>docker ps</code> output to show only the client container. Check that the <strong>STATUS</strong> column shows it was recently restarted (e.g., "Up 5 seconds").</p>`)}
       <div class="callout info">Caddy does <strong>not</strong> need to be restarted. It proxies to the container by name, so as long as the container name stays the same, Caddy will route to the rebuilt container automatically.</div>
+      <h3>Adding a New Site</h3>
+      <p>When adding a completely new client site (not updating an existing one), you need to do <strong>all</strong> of the following:</p>
+      <ol>
+        <li><strong>Add a DNS record in Cloudflare</strong> &mdash; Go to Cloudflare &rarr; DNS &rarr; Records &rarr; Add an <strong>A record</strong> for the new subdomain pointing to your reserved IP (<code>${raw('reservedIP', 'YOUR_RESERVED_IP')}</code>) with <strong>Proxy enabled</strong> (orange cloud)</li>
+        <li><strong>Update the Caddyfile</strong> &mdash; Add a new site block to <code>/srv/caddy/Caddyfile</code> on the droplet</li>
+        <li><strong>Reload Caddy</strong>:</li>
+      </ol>
+      ${codeBlock(`docker exec caddy caddy reload --config /etc/caddy/Caddyfile`, 'bash', `<p>This reloads Caddy's configuration without downtime. Caddy picks up the new site block and starts routing traffic for the new subdomain.</p>`)}
+      <ol start="4">
+        <li><strong>Clone and start the site container</strong>:</li>
+      </ol>
+      ${codeBlock(`cd /srv/sites
+git clone git@github.com:${raw('githubUsername', 'YOUR_GITHUB_USERNAME')}/new-site.git new-site
+cd new-site && docker compose up -d --build`, 'bash', `<p>Clones the new site repo and starts the container. Make sure the <code>container_name</code> in <code>docker-compose.yml</code> matches what you put in the Caddyfile's <code>reverse_proxy</code> directive.</p>`)}
+      <div class="callout warning"><strong>Don't forget the DNS record!</strong> If you skip the Cloudflare DNS step, the site will not be reachable. This is the most commonly missed step when adding new sites.</div>
       <div class="callout success"><strong>Setup complete!</strong> You now know how to deploy and update client sites on this droplet.</div>
     `
           }

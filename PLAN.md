@@ -425,7 +425,12 @@ ssh root@<YOUR_RESERVED_IP>
    docker exec caddy caddy reload --config /etc/caddy/Caddyfile
    ```
 
-5. **Add DNS records** in Cloudflare for each new subdomain (A record → reserved IP → Proxied)
+5. **Add DNS records in Cloudflare** for each new subdomain:
+   - Go to Cloudflare → DNS → Records
+   - Add an **A record** for each new subdomain pointing to your reserved IP with **Proxy enabled** (orange cloud)
+   - The site will **not be reachable** until the DNS record exists — Cloudflare won't know to route the traffic to your droplet
+
+> **IMPORTANT:** This step is easy to forget. If you add a new site and get "page not found" or DNS errors in your browser, the most likely cause is a missing DNS record in Cloudflare.
 
 ---
 
