@@ -4,7 +4,7 @@ services:
     container_name: anythingllm1
     restart: unless-stopped
     volumes:
-      - <YOUR_VOLUME_PATH>/anythingllm/instance1:/app/server/storage
+      - /mnt/volume_syd1_02/anythingllm/instance1:/app/server/storage
     environment:
       - STORAGE_DIR=/app/server/storage
     networks:

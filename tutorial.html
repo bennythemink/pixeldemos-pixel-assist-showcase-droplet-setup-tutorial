@@ -505,7 +505,7 @@
     </div>
 
     <script>
-      const TOTAL_STEPS = 18
+      const TOTAL_STEPS = 19
 
       const state = {
         currentStep: 0,
@@ -718,7 +718,10 @@ mkdir -p /srv/anythingllm/instance1
 
 # Persistent data directories on the volume
 mkdir -p ${getVolumePath()}/caddy
-mkdir -p ${getVolumePath()}/anythingllm/instance1`, 'bash', `<p><code>mkdir</code> creates directories.</p><p><code>-p</code> creates parent directories as needed and doesn't error if directories already exist.</p><p>Lines starting with <code>#</code> are comments for clarity.</p>`)}
+mkdir -p ${getVolumePath()}/anythingllm/instance1
+
+# AnythingLLM runs as UID 1000 inside the container
+chown -R 1000:1000 ${getVolumePath()}/anythingllm/instance1`, 'bash', `<p><code>mkdir</code> creates directories.</p><p><code>-p</code> creates parent directories as needed and doesn't error if directories already exist.</p><p><code>chown -R 1000:1000</code> sets ownership of the AnythingLLM data directory to UID 1000 (the user that AnythingLLM runs as inside the container). Without this, the container cannot write its SQLite database to the mounted volume.</p><p>Lines starting with <code>#</code> are comments for clarity.</p>`)}
       <h3>Verify Directory Creation</h3>
       <p>Confirm the directories were created successfully:</p>
       ${codeBlock(`# Check /srv directories
@@ -997,6 +1000,7 @@ docker compose up -d`, 'bash', `<p><code>cd</code> changes to the AnythingLLM in
       ${codeBlock(`docker ps
 docker logs anythingllm1`, 'bash', `<p><code>docker ps</code> confirms the container is running.</p><p><code>docker logs anythingllm1</code> shows the startup logs and any errors.</p>`)}
       <div class="callout info">The storage volume points to <code>${getVolumePath()}/anythingllm/instance1</code> on the DO attached volume, so all AnythingLLM data (database, uploads, vector cache) persists independently of the container.</div>
+      <div class="callout warning">If you see <code>unable to open database file</code> errors in the logs, the storage directory has incorrect ownership. Fix it with:<br><code>chown -R 1000:1000 ${getVolumePath()}/anythingllm/instance1</code><br>then restart: <code>docker restart anythingllm1</code></div>
     `
         }),
 
@@ -1065,6 +1069,23 @@ docker logs caddy`, 'bash', `<p><code>docker ps</code> lists all running contain
           where: 'Digital Ocean Dashboard',
           body: `
       <p>Go to <strong>Networking &rarr; Firewalls</strong> and create a firewall. Attach it to your droplet.</p>
+      <h3>Find Your Public IP Address</h3>
+      <p>For the SSH rule, you need your current public IP address. From your local terminal:</p>
+      ${codeBlock(`curl ifconfig.me`, 'bash', `<p><code>curl ifconfig.me</code> queries an external service that returns your public IP address.</p><p>The output is a single IP address like <code>203.0.113.45</code>. Use this value for the SSH firewall rule.</p>`)}
+      <div class="callout warning"><strong>Dynamic IP Warning:</strong> If you have a dynamic IP address (common with residential internet), your IP may change and lock you out of SSH access. Options:
+        <ul>
+          <li><strong>Allow SSH from anywhere</strong> — Set the SSH source to "All IPv4" and "All IPv6". SSH key authentication (which you set up in Step 5) keeps this secure.</li>
+          <li><strong>Update the firewall when your IP changes</strong> — Go to DO dashboard → Networking → Firewalls and update the SSH rule with your new IP.</li>
+          <li><strong>Use DO Console as backup</strong> — If locked out, use the <strong>Access → Launch Droplet Console</strong> option in the DO dashboard to regain access and update the firewall.</li>
+        </ul>
+      </div>
+      <h3>Find Cloudflare IP Ranges</h3>
+      <p>For ports 80 and 443, you need to allow all Cloudflare IP ranges:</p>
+      ${codeBlock(`curl https://www.cloudflare.com/ips-v4`, 'bash', `<p>This retrieves Cloudflare's IPv4 address ranges in CIDR notation.</p><p>The output is a list of IP ranges, one per line (e.g., <code>173.245.48.0/20</code>). You'll need to add each range as a separate source in the Digital Ocean firewall configuration.</p>`)}
+      <p>For IPv6 support, also fetch:</p>
+      ${codeBlock(`curl https://www.cloudflare.com/ips-v6`, 'bash', `<p>This retrieves Cloudflare's IPv6 address ranges.</p>`)}
+      <div class="callout info">You can also view the IP ranges at <code>cloudflare.com/ips/</code> in your browser.</div>
+      <h3>Configure Firewall Rules</h3>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Direction</th><th>Protocol</th><th>Port</th><th>Sources</th></tr></thead>
@@ -1077,10 +1098,42 @@ docker logs caddy`, 'bash', `<p><code>docker ps</code> lists all running contain
         </table>
       </div>
       <p>Restricting ports 80/443 to Cloudflare IPs ensures traffic can only reach your droplet through Cloudflare's proxy, preventing anyone from bypassing DDOS protection by hitting the reserved IP directly.</p>
-      <div class="callout info">Cloudflare publishes their IP ranges at <code>cloudflare.com/ips/</code></div>
-      <div class="callout success"><strong>You're done!</strong> Your multi-client droplet hosting setup is complete.</div>
+      <h3>Verify the Firewall</h3>
+      <p>After creating and attaching the firewall, test that it's working correctly:</p>
+      <p><strong>1. Confirm SSH still works</strong> (from your local terminal):</p>
+      ${codeBlock(`ssh root@${raw('reservedIP', 'YOUR_RESERVED_IP')}`, 'bash', `<p>If you can connect, the SSH rule is correctly allowing your IP. If the connection hangs or is refused, the firewall is blocking you — use the DO Console to fix the SSH rule.</p>`)}
+      <p><strong>2. Confirm HTTPS works through Cloudflare</strong> (from your local terminal):</p>
+      ${codeBlock(`curl -I https://${getClients()[0] || 'client1'}.${getDomain()}`, 'bash', `<p><code>curl -I</code> fetches only the HTTP headers (not the full page).</p><p>You should see <code>HTTP/2 200</code> (or <code>HTTP/1.1 200</code>) if the site is reachable through Cloudflare. This confirms Cloudflare's IPs are allowed through the firewall.</p>`)}
+      <p><strong>3. Confirm direct access is blocked</strong> (from your local terminal):</p>
+      ${codeBlock(`curl -I --connect-timeout 5 http://${raw('reservedIP', 'YOUR_RESERVED_IP')}`, 'bash', `<p>This attempts to connect directly to the droplet's IP, bypassing Cloudflare.</p><p>The connection should <strong>time out</strong> or be <strong>refused</strong>, confirming the firewall is blocking non-Cloudflare traffic on port 80. If you get a response, the firewall rules are not applied correctly.</p>`)}
     `
-        })
+        }),
+
+        // Step 19: Updating Site Code
+        () => {
+          const clients = getClients()
+          const exampleClient = clients[0] || 'client1'
+
+          return {
+            title: 'Updating Site Code',
+            where: 'Droplet',
+            body: `
+      <p>When you push changes to a client site's GitHub repo, you need to pull the latest code on the droplet and rebuild the container.</p>
+      <h3>Pull Latest Code</h3>
+      <p>SSH into the droplet and navigate to the site directory:</p>
+      ${codeBlock(`ssh root@${raw('reservedIP', 'YOUR_RESERVED_IP')}
+cd /srv/sites/${esc(exampleClient)}
+git pull`, 'bash', `<p><code>cd /srv/sites/${esc(exampleClient)}</code> navigates to the client site directory where the repo was cloned.</p><p><code>git pull</code> fetches and merges the latest changes from GitHub.</p>`)}
+      <h3>Rebuild &amp; Restart the Container</h3>
+      <p>Since the site uses a Dockerfile build, you need to rebuild the image for changes to take effect:</p>
+      ${codeBlock(`docker compose up -d --build`, 'bash', `<p><code>docker compose up -d</code> starts the container in detached mode.</p><p><code>--build</code> forces Docker to rebuild the image from the Dockerfile, incorporating the updated site files. Without this flag, Docker would reuse the old cached image.</p>`)}
+      <h3>Verify</h3>
+      ${codeBlock(`docker ps | grep ${esc(exampleClient)}`, 'bash', `<p>Filters <code>docker ps</code> output to show only the client container. Check that the <strong>STATUS</strong> column shows it was recently restarted (e.g., "Up 5 seconds").</p>`)}
+      <div class="callout info">Caddy does <strong>not</strong> need to be restarted. It proxies to the container by name, so as long as the container name stays the same, Caddy will route to the rebuilt container automatically.</div>
+      <div class="callout success"><strong>Setup complete!</strong> You now know how to deploy and update client sites on this droplet.</div>
+    `
+          }
+        }
       ]
 
       function render() {

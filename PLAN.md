@@ -98,6 +98,9 @@ mkdir -p /srv/anythingllm/instance1
 # Persistent data directories on the volume
 mkdir -p <YOUR_VOLUME_PATH>/caddy
 mkdir -p <YOUR_VOLUME_PATH>/anythingllm/instance1
+
+# AnythingLLM runs as UID 1000 inside the container
+chown -R 1000:1000 <YOUR_VOLUME_PATH>/anythingllm/instance1
 ```
 
 ### 2c. Set Up GitHub SSH Key
@@ -337,6 +340,12 @@ docker ps
 docker logs anythingllm1
 ```
 
+> **Troubleshooting:** If `docker logs anythingllm1` shows `unable to open database file` errors, the storage directory ownership is wrong. Fix with:
+> ```bash
+> chown -R 1000:1000 <YOUR_VOLUME_PATH>/anythingllm/instance1
+> docker restart anythingllm1
+> ```
+
 ---
 
 ## Step 7: Add the Chat Widget to Client Sites
@@ -422,19 +431,71 @@ ssh root@<YOUR_RESERVED_IP>
 
 ## Updating a Client Site
 
+When you push changes to a client site's GitHub repo, pull the latest code on the droplet and rebuild the container.
+
 **SSH into the droplet:**
 
 ```bash
 ssh root@<YOUR_RESERVED_IP>
-cd /srv/sites/client1
+cd /srv/sites/<client-subdomain>
 git pull
 ```
 
-Since the HTML is mounted as a volume, nginx serves the updated files immediately — no container restart needed.
+Since the site uses a Dockerfile build (not a volume mount), you need to rebuild the image for changes to take effect:
+
+```bash
+docker compose up -d --build
+```
+
+The `--build` flag forces Docker to rebuild the image from the Dockerfile, incorporating the updated site files. Without this flag, Docker reuses the old cached image.
+
+Verify:
+
+```bash
+docker ps | grep <client-subdomain>
+```
+
+Check that the STATUS column shows the container was recently restarted.
+
+> **Note:** Caddy does not need to be restarted. It proxies to the container by name, so as long as the container name stays the same, Caddy routes to the rebuilt container automatically.
 
 ---
 
 ## Droplet Firewall
+
+### Find Your Public IP Address
+
+For the SSH rule, you need your current public IP address. From your local terminal:
+
+```bash
+curl ifconfig.me
+```
+
+The output is a single IP address (e.g., `203.0.113.45`). Use this value for the SSH firewall rule.
+
+> **Dynamic IP Warning:** If you have a dynamic IP address (common with residential internet), your IP may change and lock you out of SSH access. Options:
+>
+> - **Allow SSH from anywhere** — Set the SSH source to "All IPv4" and "All IPv6". SSH key authentication (set up in Step 2c) keeps this secure.
+> - **Update the firewall when your IP changes** — Go to DO dashboard → Networking → Firewalls and update the SSH rule with your new IP.
+> - **Use DO Console as backup** — If locked out, use the **Access → Launch Droplet Console** option in the DO dashboard to regain access and update the firewall.
+
+### Find Cloudflare IP Ranges
+
+For ports 80 and 443, retrieve Cloudflare's IP ranges:
+
+```bash
+# IPv4 ranges
+curl https://www.cloudflare.com/ips-v4
+
+# IPv6 ranges
+curl https://www.cloudflare.com/ips-v6
+```
+
+The output lists IP ranges in CIDR notation (e.g., `173.245.48.0/20`), one per line. Add each range as a separate source in the firewall configuration.
+
+You can also view the IP ranges at https://www.cloudflare.com/ips/ in your browser.
+
+### Configure Firewall Rules
 
 **Where:** Digital Ocean dashboard → Networking → Firewalls
 
@@ -449,4 +510,30 @@ Create a firewall and attach to the droplet:
 
 Restricting ports 80/443 to Cloudflare IPs ensures traffic can only reach your droplet through Cloudflare's proxy, preventing anyone from bypassing DDOS protection by hitting the reserved IP directly.
 
-Cloudflare publishes their IP ranges at: https://www.cloudflare.com/ips/
+### Verify the Firewall
+
+After creating and attaching the firewall, test that it's working correctly:
+
+**1. Confirm SSH still works** (from your local terminal):
+
+```bash
+ssh root@<YOUR_RESERVED_IP>
+```
+
+If you can connect, the SSH rule is correctly allowing your IP. If the connection hangs or is refused, the firewall is blocking you — use the DO Console to fix the SSH rule.
+
+**2. Confirm HTTPS works through Cloudflare** (from your local terminal):
+
+```bash
+curl -I https://client1.yourdomain.com.au
+```
+
+You should see `HTTP/2 200` (or `HTTP/1.1 200`) if the site is reachable through Cloudflare. This confirms Cloudflare's IPs are allowed through the firewall.
+
+**3. Confirm direct access is blocked** (from your local terminal):
+
+```bash
+curl -I --connect-timeout 5 http://<YOUR_RESERVED_IP>
+```
+
+The connection should time out or be refused, confirming the firewall is blocking non-Cloudflare traffic on port 80. If you get a response, the firewall rules are not applied correctly.

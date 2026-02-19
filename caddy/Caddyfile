@@ -17,6 +17,11 @@ nvc.mappable.com.au {
     reverse_proxy nvc:80
 }
 
+sonata-acoustic-risk-tool.mappable.com.au, sonata-acoustic-risk.mappable.com.au, acoustic-risk-tool.mappable.com.au, acoustic.mappable.com.au, sonata.mappable.com.au {
+    tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
+    reverse_proxy sonata-acoustic-risk:80
+}
+
 rag1.mappable.com.au {
     tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
     reverse_proxy anythingllm1:3001
