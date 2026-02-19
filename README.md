@@ -82,11 +82,13 @@ The tutorial lets you enter your specific values (IP, domain, subdomains, volume
 
 ## Adding More Clients
 
-1. Clone the new site repo to `/srv/sites/` on the droplet
-2. Start the container with `docker compose up -d`
-3. Add a new block to the Caddyfile
-4. Reload Caddy: `docker exec caddy caddy reload --config /etc/caddy/Caddyfile`
-5. Add a DNS record in Cloudflare (A record, proxied)
+1. Use the [Website Snapshot](https://github.com/bennythemink/website-snapshot/tree/main) project to download a copy of the site in question.
+2. This will download and save a copy of the site as well as creating the dockerfile and docker-compose files.
+3. SSH into the server and clone the new site repo to `/srv/sites/` on the droplet.
+4. Start the container with `docker compose up -d`
+5. Navigate tot he Caddyfile and add a new proxy block pointing to the new container/service name.
+6. Reload Caddy: `docker exec caddy caddy reload --config /etc/caddy/Caddyfile`
+7. Add a DNS record in Cloudflare (A record, proxied)
 
 ## Updating a Client Site
 

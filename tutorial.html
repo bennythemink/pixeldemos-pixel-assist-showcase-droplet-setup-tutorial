@@ -936,6 +936,8 @@ docker compose up -d`, 'bash', `<p><code>cd /srv/caddy</code> changes to the dir
         ${codeBlock(`docker ps
 docker logs caddy`, 'bash', `<p><code>docker ps</code> lists running containers.</p><p><code>docker logs</code> shows container output/logs for debugging.</p>`)}
         <div class="callout info">Caddy will show errors about unreachable upstreams (${clients.map((c) => `<code>${esc(c)}</code>`).join(', ')}) &mdash; this is expected since those containers don't exist yet.</div>
+        <div class="callout warning"><strong>Remember:</strong> Whenever you edit the Caddyfile after initial deployment, you must reload Caddy for changes to take effect:<br>
+        <code>docker exec caddy caddy reload --config /etc/caddy/Caddyfile</code></div>
       `
           }
         },

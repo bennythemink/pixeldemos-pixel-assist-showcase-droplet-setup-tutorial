@@ -260,6 +260,11 @@ docker logs caddy
 
 Caddy will show errors about unreachable upstreams (`client1`, `client2`, etc.) — this is expected since those containers don't exist yet.
 
+> **Remember:** Whenever you edit the Caddyfile after initial deployment, you must reload Caddy for changes to take effect:
+> ```bash
+> docker exec caddy caddy reload --config /etc/caddy/Caddyfile
+> ```
+
 ---
 
 ## Step 5: Deploy Client Sites
