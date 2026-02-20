@@ -329,6 +329,8 @@ ssh root@<YOUR_RESERVED_IP>
 scp anythingllm/instance1/docker-compose.yml root@<YOUR_RESERVED_IP>:/srv/anythingllm/instance1/docker-compose.yml
 ```
 
+> **Note on `cap_add: SYS_ADMIN`:** The docker-compose file includes `cap_add: - SYS_ADMIN`. This grants the container the Linux `SYS_ADMIN` capability, which is required for AnythingLLM's website scraping feature. The built-in data connector uses Puppeteer (headless Chromium) to crawl web pages, and Chromium's sandbox requires this capability to function inside a Docker container. Without it, any attempt to scrape a website via the Data Connectors UI will fail with a "No usable sandbox" error.
+
 ### 6b. Start AnythingLLM
 
 **SSH into the droplet:**
@@ -418,7 +420,9 @@ ssh root@<YOUR_RESERVED_IP>
    ```bash
    mkdir -p /srv/anythingllm/instance2
    mkdir -p <YOUR_VOLUME_PATH>/anythingllm/instance2
-   # Create docker-compose.yml with service name anythingllm2 and update <YOUR_VOLUME_PATH>
+   chown -R 1000:1000 <YOUR_VOLUME_PATH>/anythingllm/instance2
+   # Create docker-compose.yml with service name anythingllm2, update <YOUR_VOLUME_PATH>,
+   # and include cap_add: - SYS_ADMIN (required for website scraping via Puppeteer)
    cd /srv/anythingllm/instance2 && docker compose up -d
    ```
 

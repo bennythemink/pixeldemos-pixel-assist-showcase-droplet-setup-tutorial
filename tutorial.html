@@ -991,6 +991,7 @@ docker network inspect caddy-net`, 'bash', `<p><code>docker ps</code> lists all 
           where: 'Your Local Terminal + Droplet',
           body: `
       <div class="callout warning"><strong>IMPORTANT:</strong> Before copying, update <code>anythingllm/instance1/docker-compose.yml</code> and replace <code>&lt;YOUR_VOLUME_PATH&gt;</code> with <code>${getVolumePath()}</code></div>
+      <div class="callout info"><strong>Why <code>cap_add: SYS_ADMIN</code>?</strong> The docker-compose file includes <code>cap_add: - SYS_ADMIN</code>. This grants the container the Linux SYS_ADMIN capability, which is required for AnythingLLM's website scraping feature. The built-in data connector uses Puppeteer (headless Chromium) to crawl web pages, and Chromium's sandbox needs this capability to run inside Docker. Without it, scraping a website via the Data Connectors UI will fail with a "No usable sandbox" error.</div>
       <h3>Copy Config to the Droplet</h3>
       <p>From your local machine:</p>
       ${codeBlock(`scp anythingllm/instance1/docker-compose.yml root@${raw('reservedIP', 'YOUR_RESERVED_IP')}:/srv/anythingllm/instance1/docker-compose.yml`, 'bash', `<p><code>scp</code> copies the AnythingLLM docker-compose configuration to the droplet.</p>`)}
